@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Smart Task Manager</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 30px; background: #f4f7f6; color: #333; }
+        .stats-container { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
+        .stat-box { padding: 20px; background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); flex: 1; min-width: 150px; text-align: center; }
+        
+        .task-card { background: white; padding: 20px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 6px solid #ccc; }
+        .High { border-left-color: #e74c3c; } 
+        .Medium { border-left-color: #f39c12; } 
+        .Low { border-left-color: #2ecc71; }
+        
+        .Completed-task { opacity: 0.6; background-color: #e8f5e9; }
+        .Completed-task strong { text-decoration: line-through; }
+
+        .btn-done { color: #2ecc71; text-decoration: none; font-weight: bold; margin-right: 15px; }
+        .btn-delete { color: #e74c3c; text-decoration: none; font-weight: bold; }
+        .logout-btn { background: #e74c3c; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; font-weight: bold; }
+        
+        #notification { position: fixed; top: 20px; right: 20px; background: #3498db; color: white; padding: 15px 25px; display: none; border-radius: 5px; z-index: 1000; }
+        
+        form { background: white; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+        input, select, button { padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; }
+        .add-btn { background: #3498db; color: white; border: none; cursor: pointer; }
+
+        /* Responsive */
+        @media(max-width: 768px){
+            .stats-container { flex-direction: column; }
+            form input, form select, form button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div id="notification"></div>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>Welcome, {{ current_user.username }}!</h1>
+        <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+    <hr>
+
+    <h3>Analytics Summary (Pandas & NumPy)</h3>
+    <div class="stats-container">
+        <div class="stat-box"><strong>Total</strong><br><span style="font-size: 1.5em;">{{ total }}</span></div>
+        <div class="stat-box"><strong>Pending</strong><br><span style="font-size: 1.5em; color: #f39c12;">{{ pending }}</span></div>
+        <div class="stat-box"><strong>Completed</strong><br><span style="font-size: 1.5em; color: #2ecc71;">{{ completed }}</span></div>
+        <div class="stat-box"><strong>Success Rate</strong><br><span style="font-size: 1.5em; color: #3498db;">{{ percent }}%</span></div>
+    </div>
+
+    <h3>+ Add New Task</h3>
+    <form action="/api/add_task" method="POST">
+        <input type="text" name="title" placeholder="Task Title" required>
+        <input type="text" name="description" placeholder="Description">
+        <select name="priority">
+            <option value="Low">Low Priority</option>
+            <option value="Medium" selected>Medium Priority</option>
+            <option value="High">High Priority</option>
+        </select>
+        <button type="submit" class="add-btn">Add Task</button>
+    </form>
+
+    <h3>Your Tasks</h3>
+    {% for task in tasks %}
+    <div class="task-card {{ task.priority }} {% if task.status == 'Completed' %}Completed-task{% endif %}">
+        <div style="display: flex; justify-content: space-between;">
+            <strong>{{ task.title }}</strong>
+            <small style="color: #888;">Created: {{ task.created_at.strftime('%d-%b-%Y') }}</small>
+        </div>
+        <p>{{ task.description if task.description else 'No description provided' }}</p>
+        
+        <div class="actions">
+            {% if task.status != 'Completed' %}
+                <a href="/api/update_task/{{ task.id }}" class="btn-done">✔ Mark as Done</a>
+            {% else %}
+                <span style="color: #2ecc71; font-weight: bold;">✓ Completed</span>
+            {% endif %}
+            <span style="margin: 0 10px; color: #ccc;">|</span>
+            <a href="/api/delete_task/{{ task.id }}" class="btn-delete" onclick="return confirm('Delete this task?')">🗑 Delete</a>
+        </div>
+    </div>
+    {% else %}
+    <p>No tasks found.</p>
+    {% endfor %}
+
+    <script>
+        var socket = io();
+        socket.on('task_added', function(data) {
+            var notif = document.getElementById('notification');
+            notif.innerHTML = '🔔 ' + data.message;
+            notif.style.display = 'block';
+            setTimeout(function() { 
+                notif.style.display = 'none';
+                location.reload(); 
+            }, 2000);
+        });
+    </script>
+</body>
+</html
